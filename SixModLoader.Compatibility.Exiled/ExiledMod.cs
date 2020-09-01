@@ -82,9 +82,10 @@ namespace SixModLoader.Compatibility.Exiled
                 else
                 {
                     var releases = await gitHubClient.Repository.Release.GetAll("galaxy119", "EXILED");
+                    var prerelease = version != null && version.IsPrerelease;
 
                     var newerRelease = releases
-                        .Where(x => x.Prerelease == version?.IsPrerelease)
+                        .Where(x => x.Prerelease == prerelease)
                         .Select(x => (Release: x, Version: SemanticVersion.TryParse(x.TagName, out var v) ? v : null))
                         .Where(x => x.Version != null)
                         .OrderByDescending(x => x.Version)

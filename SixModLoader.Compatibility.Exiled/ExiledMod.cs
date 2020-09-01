@@ -85,7 +85,7 @@ namespace SixModLoader.Compatibility.Exiled
                     var prerelease = version != null && version.IsPrerelease;
 
                     var newerRelease = releases
-                        .Where(x => x.Prerelease == prerelease)
+                        .Where(x => !x.Prerelease || prerelease)
                         .Select(x => (Release: x, Version: SemanticVersion.TryParse(x.TagName, out var v) ? v : null))
                         .Where(x => x.Version != null)
                         .OrderByDescending(x => x.Version)

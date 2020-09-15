@@ -15,12 +15,22 @@ namespace SixModLoader.Compatibility.Exiled
         public EventsCompatibility()
         {
             var events = global::Exiled.Events.Events.Instance;
+            if (events == null)
+            {
+                Logger.Error("Exiled.Events instance is not created!");
+                return;
+            }
+
             events.Config.IsNameTrackingEnabled = false;
 
             Logger.Info("Unpatching bad Exiled.Events");
-            events.Harmony.Unpatch(AccessTools.Method(typeof(WeaponManager), nameof(WeaponManager.CallCmdShoot)), HarmonyPatchType.All, events.Harmony.Id);
-            events.Harmony.Unpatch(AccessTools.Method(typeof(Inventory), nameof(Inventory.CallCmdDropItem)), HarmonyPatchType.All, events.Harmony.Id);
-            events.Harmony.Unpatch(AccessTools.Method(typeof(CharacterClassManager), nameof(CharacterClassManager.SetPlayersClass)), HarmonyPatchType.All, events.Harmony.Id);
+            global::Exiled.Events.Events.DisabledPatches.AddRange(new[]
+            {
+                AccessTools.Method(typeof(WeaponManager), nameof(WeaponManager.CallCmdShoot)),
+                AccessTools.Method(typeof(Inventory), nameof(Inventory.CallCmdDropItem)),
+                AccessTools.Method(typeof(CharacterClassManager), nameof(CharacterClassManager.SetPlayersClass))
+            });
+            events.ReloadDisabledPatches();
         }
 
         [EventHandler]

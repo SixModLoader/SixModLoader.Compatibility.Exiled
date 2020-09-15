@@ -82,10 +82,18 @@ namespace SixModLoader.Compatibility.Exiled
                 else
                 {
                     var releases = await gitHubClient.Repository.Release.GetAll("galaxy119", "EXILED");
-                    var prerelease = version != null && version.IsPrerelease;
+                    var release = releases.FirstOrDefault(x => SemanticVersion.TryParse(x.TagName, out var v) && v.Equals(version));
+                    var prerelease = (version != null && version.IsPrerelease) || (release != null && release.Prerelease);
+                    const string requiredVersion = "2.1.4";
+
+                    if (prerelease)
+                    {
+                        Logger.Warn("Using prerelease!");
+                    }
 
                     var newerRelease = releases
-                        .Where(x => !x.Prerelease || prerelease)
+                        .Where(x => !x.Prerelease || prerelease || x.TagName == requiredVersion)
+                        .Where(x => x.Assets.Any(a => a.Name == "Exiled.tar.gz"))
                         .Select(x => (Release: x, Version: SemanticVersion.TryParse(x.TagName, out var v) ? v : null))
                         .Where(x => x.Version != null)
                         .OrderByDescending(x => x.Version)

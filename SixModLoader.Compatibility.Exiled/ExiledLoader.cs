@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using CommandSystem.Commands;
 using Exiled.API.Enums;
 using Exiled.API.Features;
 using HarmonyLib;
@@ -39,8 +40,12 @@ namespace SixModLoader.Compatibility.Exiled
             File.Open(Paths.Config, FileMode.OpenOrCreate, FileAccess.Read).Dispose();
             Timing.CallDelayed(0.25f, () =>
             {
+                var modDescription = BuildInfoCommand.ModDescription;
                 global::Exiled.Loader.Loader.Config.Environment = EnvironmentType.Production;
                 global::Exiled.Loader.Loader.Run();
+
+                var mod = SixModLoader.Instance.ModManager.GetMod<ExiledMod>();
+                BuildInfoCommand.ModDescription = modDescription + $"\nExiled compatibility: {mod.Info.Version} - {mod.Instance.Loaded}";
 
                 try
                 {
@@ -48,7 +53,7 @@ namespace SixModLoader.Compatibility.Exiled
                 }
                 catch (Exception e) when (e is InvalidOperationException || e is TypeLoadException || e is FileNotFoundException)
                 {
-                    Logger.Warn("Exiled Events plugin not found!");
+                    Logger.Warn("Exiled Events plugin not found!\n" + e);
                 }
 
                 harmony.Patch(AccessTools.Method(typeof(SixModLoaderCommand.ModsCommand), nameof(SixModLoaderCommand.ModsCommand.Execute)), postfix: new HarmonyMethod(typeof(ExiledLoader), nameof(ModsCommandPatch)));

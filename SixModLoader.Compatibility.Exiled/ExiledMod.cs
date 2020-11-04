@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using HarmonyLib;
+using JetBrains.Annotations;
 using NuGet.Versioning;
 using Octokit;
 using SharpCompress.Common;
@@ -34,7 +35,9 @@ namespace SixModLoader.Compatibility.Exiled
     {
         public SixModLoader Loader { get; }
 
-        public bool Loaded { get; set; }
+        [CanBeNull]
+        public SemanticVersion Loaded { get; set; }
+
         public string ModDirectory { get; }
 
         [AutoHarmony]
@@ -82,17 +85,8 @@ namespace SixModLoader.Compatibility.Exiled
                 else
                 {
                     var releases = await gitHubClient.Repository.Release.GetAll("galaxy119", "EXILED");
-                    var release = releases.FirstOrDefault(x => SemanticVersion.TryParse(x.TagName, out var v) && v.Equals(version));
-                    var prerelease = (version != null && version.IsPrerelease) || (release != null && release.Prerelease);
-                    const string requiredVersion = "2.1.4";
-
-                    if (prerelease)
-                    {
-                        Logger.Warn("Using prerelease!");
-                    }
 
                     var newerRelease = releases
-                        .Where(x => !x.Prerelease || prerelease || x.TagName == requiredVersion)
                         .Where(x => x.Assets.Any(a => a.Name == "Exiled.tar.gz"))
                         .Select(x => (Release: x, Version: SemanticVersion.TryParse(x.TagName, out var v) ? v : null))
                         .Where(x => x.Version != null)
@@ -131,15 +125,18 @@ namespace SixModLoader.Compatibility.Exiled
                 Logger.Info("Loaded " + Assembly.LoadFile(loaderPath));
                 Logger.Info("Loaded " + Assembly.LoadFile(apiPath));
 
-                Loaded = true;
+                Loaded = version;
             }).Wait();
         }
 
         [EventHandler(typeof(ServerConsoleReadyEvent))]
         public void OnServerConsoleReady()
         {
-            if (!Loaded)
+            if (Loaded == null)
+            {
+                Logger.Warn("Exiled was not loaded");
                 return;
+            }
 
             ExiledLoader.Load(Harmony);
         }

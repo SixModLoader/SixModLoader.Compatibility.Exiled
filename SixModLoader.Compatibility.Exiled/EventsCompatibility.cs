@@ -1,4 +1,7 @@
-﻿using Exiled.API.Features;
+﻿using System;
+using System.Linq;
+using System.Reflection;
+using Exiled.API.Features;
 using Exiled.Events.EventArgs;
 using HarmonyLib;
 using SixModLoader.Api.Events.Player.Class;
@@ -24,13 +27,28 @@ namespace SixModLoader.Compatibility.Exiled
             events.Config.IsNameTrackingEnabled = false;
 
             Logger.Info("Unpatching bad Exiled.Events");
-            global::Exiled.Events.Events.DisabledPatches.AddRange(new[]
+            global::Exiled.Events.Events.DisabledPatchesHashSet.UnionWith(new[]
             {
                 AccessTools.Method(typeof(WeaponManager), nameof(WeaponManager.CallCmdShoot)),
                 AccessTools.Method(typeof(Inventory), nameof(Inventory.CallCmdDropItem)),
                 AccessTools.Method(typeof(CharacterClassManager), nameof(CharacterClassManager.SetPlayersClass))
             });
             events.ReloadDisabledPatches();
+
+            var npcsType = Type.GetType("NPCS.Plugin, 0NPCS") ?? Type.GetType("NPCS.Plugin, NPCS");
+
+            if (npcsType != null)
+            {
+                Logger.Info("Unpatching bad NPCS");
+
+                var instanceProperty = npcsType.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public);
+                var instance = instanceProperty!.GetValue(null);
+
+                var harmonyProperty = npcsType.GetProperty("Harmony", BindingFlags.Instance | BindingFlags.Public);
+                var harmony = (Harmony) harmonyProperty!.GetValue(instance);
+
+                harmony.Unpatch(AccessTools.Method(typeof(WeaponManager), nameof(WeaponManager.CallCmdShoot)), HarmonyPatchType.All, harmony.Id);
+            }
         }
 
         [EventHandler]
@@ -47,7 +65,7 @@ namespace SixModLoader.Compatibility.Exiled
         [EventHandler]
         public void OnPlayerShotByPlayer(PlayerShotByPlayerEvent e)
         {
-            var @event = new ShotEventArgs(Player.Get(e.Shooter.gameObject), e.Player.gameObject, e.HitboxType, e.Distance, e.HitInfo.Amount);
+            var @event = new ShotEventArgs(Player.Get(e.Shooter.gameObject), e.Player.gameObject, e.HitBoxType, e.Distance, e.HitInfo.Amount);
             Handlers.Player.OnShot(@event);
             if (!@event.CanHurt)
             {
